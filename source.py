@@ -1,7 +1,7 @@
 
 
 
-URL = "https://reserve.opas.jp/osakashi/menu/Login.cgi"
+url = "https://reserve.opas.jp/osakashi/menu/Login.cgi"
 headers = {
     "Host": "reserve.opas.jp",
     "Connection": "keep-alive",
