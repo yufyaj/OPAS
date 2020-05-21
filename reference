@@ -312,3 +312,5 @@ Sub IEWait(ByRef objIE)
 		WScript.Sleep 100
 	Loop
 End Sub
+
+https://translate.google.co.jp/translate?hl=ja&sl=en&tl=ja&u=https%3A%2F%2Fmathieularose.com%2Fdecoding-captchas%2F
