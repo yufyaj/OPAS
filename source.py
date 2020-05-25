@@ -1,20 +1,12 @@
 import os
-import datetime
-import locale # エラー回避用
 import requests
+import shutil
 
 os.environ["http_proxy"] = "http://17017:17@01Tc7@proxy:8000"
 
 # =================================================================================
 #                              関数の定義
 # =================================================================================
-
-# 現在時刻の取得
-def Now():
-    # エラー回避用
-    locale.setlocale(locale.LC_CTYPE, "Japanese_Japan.932")
-    return datetime.datetime.now().strftime('%Y年%m月%d日  %H:%M:%S')
-
 # データをポストする為の関数(戻り値は　レスポンス, 次回リファラー）
 def PostData(sess, url, referrer, sessID, data = None):
     headers = {
@@ -34,10 +26,8 @@ def PostData(sess, url, referrer, sessID, data = None):
     
     # データがある場合と無い場合で変える
     if (data is None):
-        print (Now() + "  data is empty  URL: " + url)
         resp = sess.post(url, headers=headers)
     else:
-        print (Now() + "  data is empty  URL: " + url)
         resp = sess.post(url, headers=headers, data=data)
     
     # 結果のエンコードを適正に
@@ -61,6 +51,16 @@ def GetToken(resp):
     token = resp.text[start:finish]
     
     return token
+
+# Captcha画像のダウンロード
+def DownloadImage(sess, savePath):
+    url = "https://reserve.opas.jp/osakashi/kaptcha.jpg"
+    
+    resp = sess.get(url, stream=True)
+    
+    with open(savePath, 'wb') as f:
+        f.raw.decode_content = True
+        shutil.copyfileobj(resp.raw, f)
 
 # ログアウト
 def LogOut(sess, sessID):
@@ -138,6 +138,43 @@ url = "https://reserve.opas.jp/osakashi/yoyaku/ShisetsuMultiSelect.cgi"
 data = {
     "action":"Enter",
     "txtProcId":"/yoyaku/ShisetsuMultiSelect",
+    "checkMeisaiUniqKey2[0]":"",
+    "checkMeisaiUniqKey2[1]":"",
+    "checkMeisaiUniqKey2[2]":"",
+    "checkMeisaiUniqKey2[3]":"",
+    "checkMeisaiUniqKey2[4]":"",
+    "checkMeisaiUniqKey2[5]":"",
+    "checkMeisaiUniqKey2[6]":"",
+    "checkMeisaiUniqKey2[7]":"",
+    "checkMeisaiUniqKey2[8]":"",
+    "checkMeisaiUniqKey2[9]":"",
+    "checkMeisaiUniqKey2[10]":"",
+    "checkMeisaiUniqKey2[11]":"",
+    "checkMeisaiUniqKey2[12]":"",
+    "checkMeisaiUniqKey2[13]":"",
+    "checkMeisaiUniqKey2[14]":"",
+    "checkMeisaiUniqKey2[15]":"",
+    "checkMeisaiUniqKey2[16]":"",
+    "checkMeisaiUniqKey2[17]":"",
+    "checkMeisaiUniqKey2[18]":"",
+    "checkMeisaiUniqKey2[19]":"",
+    "checkMeisaiUniqKey2[20]":"",
+    "checkMeisaiUniqKey2[21]":"",
+    "checkMeisaiUniqKey2[22]":"",
+    "checkMeisaiUniqKey2[23]":"",
+    "checkMeisaiUniqKey2[24]":"",
+    "checkMeisaiUniqKey2[25]":"",
+    "checkMeisaiUniqKey2[26]":"",
+    "checkMeisaiUniqKey2[27]":"",
+    "checkMeisaiUniqKey2[28]":"",
+    "checkMeisaiUniqKey2[29]":"",
+    "checkMeisaiUniqKey2[30]":"",
+    "checkMeisaiUniqKey2[31]":"",
+    "checkMeisaiUniqKey2[32]":"",
+    "checkMeisaiUniqKey2[33]":"",
+    "checkMeisaiUniqKey2[34]":"",
+    "checkMeisaiUniqKey2[35]":"",
+    "checkMeisaiUniqKey2[36]":"",
     "checkMeisaiUniqKey":"271004_001_20_01_01_001_001"
 #    "checkMeisaiUniqKey":["","","","","","","","","","","","","271004_001_20_01_01_001_001","","","","","","","","","","","","","","","","","","","","","","","",""]
 }
@@ -198,6 +235,8 @@ data = {
 
 resp, referrer = PostData(sess, url, referrer, sessID, data)
 token = GetToken(resp)
+DownloadImage(sess, "./captcha.jpg")
+
 
 # 予約確定
 url = "https://reserve.opas.jp/osakashi/yoyaku/PriceConfirm.cgi"
