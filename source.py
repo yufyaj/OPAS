@@ -50,7 +50,7 @@ def PostData(sess, url, referrer, sessID, data = None):
     return resp, url;
 
 # URL, データセット
-def SetData(num, resp, code, day, time):
+def SetData(num, resp, code, day, time, captcha=None):
     if num == 0:
         url = "https://reserve.opas.jp/osakashi/menu/Login.cgi"
     elif num == 1:
@@ -160,7 +160,7 @@ def SetData(num, resp, code, day, time):
             "riyobiShiseMomethod":"0",
             "txtAgreement":RIYO_KIYAKU,
             "chkRiyoKiyaku":"1",
-            "txtKaptcha":BreakCaptcha()
+            "txtKaptcha":captcha
             
         }
     
@@ -347,19 +347,23 @@ def Now():
     return datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
 
 # キャプチャ突破
-def BreakCaptcha():
-    cmd = "convert captcha.jpg -crop 165x50+45+0 -negate -morphology erode octagon:2 -negate -threshold 70% conv_captcha.jpg"
-    subprocess.call(cmd, shell=True)
-    cmd = "tesseract --psm 7 conv_captcha.jpg out"
-    subprocess.call(cmd, shell=True)
-    with open("./out.txt") as f:
-        str = f.readline()
+def BreakCaptcha(sess, path):
+    DownloadImage(sess, "./image/" + path)
     
-    return ProcessStr(str)
+    cmd = "convert " + "./image/" + path + " -crop 165x50+45+0 -negate -morphology erode octagon:2 -negate -threshold 78% " + "./image_conv/conv_" + path
+    subprocess.call(cmd, shell=True)
+    cmd = 'tesseract --psm 7 ' + './image_conv/conv_' + path + ' out -c tessedit_char_whitelist="23456789abcdefghkmnprstuvwxyz"'
+    subprocess.call(cmd, shell=True)
+    with open("./out.txt") as f0:
+        str = ProcessStr(f0.readline())
+        with open("./out_list.txt", mode='a') as f1:
+            f1.write(Now() + " Path:" + path + " Text:" + str + "\n")
+    
+    return str
 
 # 文字調整
 def ProcessStr(str):
-    str_array = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    str_array = "23456789abcdefghkmnprstuvwxyz"
     result = ""
     for char in str:
         if (str_array.find(char) != -1):
@@ -439,11 +443,11 @@ def main(str):
     
     
     # 予約確定
-    i = 0
-    while(resp.text.find("公共施設予約システム（エラー情報）") == -1 and resp.text.find("公共施設予約システム（予約完了）") == -1 and i < 10):
-        DownloadImage(sess, "./captcha.jpg")
+    i = 150
+    while(resp.text.find("公共施設予約システム（エラー情報）") == -1 and resp.text.find("公共施設予約システム（予約完了）") == -1 and i < 200):
+        captcha = BreakCaptcha(sess, "captcha" + '{:0=3}'.format(i) + ".jpg")
         
-        url, data = SetData(9, resp, code, day, time)
+        url, data = SetData(9, resp, code, day, time, captcha)
         tmp = referrer
         resp. referrer = PostData(sess, url, referrer, sessID, data)
         referrer = tmp
