@@ -1,9 +1,13 @@
-import os
 import requests
 import datetime
 import shutil
 import subprocess
 import pdb
+import getcode
+
+import os
+os.environ["http_proxy"] = "http://17017@tachibana.co.jp:17@01Tc7@proxy:8000"
+
 
 # ==================================================================
 #                           定数の定義
@@ -20,29 +24,9 @@ PASSWORD = "WYDHF8VG"
 #                              関数の定義
 # =================================================================================
 # データをポストする為の関数(戻り値は　レスポンス, 次回リファラー）
-def PostData(sess, url, referrer, sessID, data = None):
-    headers = {
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Accept-Language": "ja,en-US;q=0.7,en;q=0.3",
-        "Cache-Control": "max-age=0",
-        "Connection": "keep-alive",
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Cookie": sessID + " ROUTEID=.r1; vyrqgyw=RIYOSHA-WEB4; _ga=GA1.3.1548849856.1589966404; _gid=GA1.3.1489916570.1589966404; _gat_UA-123480356-1=1",
-        "Host": "reserve.opas.jp",
-        "Origin": "https://reserve.opas.jp",
-        "Referer": referrer,
-        "Upgrade-Insecure-Requests": "1",
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0"
-    }
-    
-    # データがある場合と無い場合で変える
-    if (data is None):
-        print ("DATA is empty == " + Now() + " == URL: " + url)
-        resp = sess.post(url, headers=headers)
-    else:
-        print ("DATA exist == " + Now() + " == URL: " + url)
-        resp = sess.post(url, headers=headers, data=data)
+def PostData(sess, url, headers, data):
+    print (Now() + " == URL: " + url)
+    resp = sess.post(url, headers=headers, data=data)
     
     # 結果のエンコードを適正に
     resp.encoding = resp.apparent_encoding
@@ -50,7 +34,7 @@ def PostData(sess, url, referrer, sessID, data = None):
     return resp, url;
 
 # URL, データセット
-def SetData(num, resp, code, day, time, captcha=None):
+def SetData(num, referrer, sessID, code=None, day=None, time=None, captcha=None, token=None):
     if num == 0:
         url = "https://reserve.opas.jp/osakashi/menu/Login.cgi"
     elif num == 1:
@@ -72,6 +56,20 @@ def SetData(num, resp, code, day, time, captcha=None):
     elif num == 9:
         url = "https://reserve.opas.jp/osakashi/yoyaku/PriceConfirm.cgi"
     
+    headers = {
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Accept-Language": "ja,en-US;q=0.7,en;q=0.3",
+        "Cache-Control": "max-age=0",
+        "Connection": "keep-alive",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Cookie": sessID + " ROUTEID=.r1; vyrqgyw=RIYOSHA-WEB4; _ga=GA1.3.1548849856.1589966404; _gid=GA1.3.1489916570.1589966404; _gat_UA-123480356-1=1",
+        "Host": "reserve.opas.jp",
+        "Origin": "https://reserve.opas.jp",
+        "Referer": referrer,
+        "Upgrade-Insecure-Requests": "1",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:76.0) Gecko/20100101 Firefox/76.0"
+    }
     
     if num == 0:
         data = {
@@ -141,11 +139,11 @@ def SetData(num, resp, code, day, time, captcha=None):
             "txtMonth":"",
             "txtDay":"",
             "checkShowDay":["MON","TUE","WED","THU","FRI","SAT","SUN","HOL"],
-            "checkYoyakuStatus":code[0:19] + "_0000_" + day + "_" + time + ":" + time + GetYoyakuStatus(code) + GetReserveTime(time)
+            "checkYoyakuStatus":code[0:19] + "_0000_" + day + "_" + time + ":" + time + getcode.GetYoyakuCode(code) + getcode.GetReserveTime(time)
         }
     elif num == 8:
         data = {
-            "org.apache.struts.taglib.html.TOKEN":GetToken(resp),
+            "org.apache.struts.taglib.html.TOKEN":token,
             "action":"Enter",
             "txtProcId":"/yoyaku/ShinseiEntry",
             "inputMensu":"1",
@@ -154,7 +152,7 @@ def SetData(num, resp, code, day, time, captcha=None):
         }
     elif num == 9:
         data = {
-            "org.apache.struts.taglib.html.TOKEN":GetToken(resp),
+            "org.apache.struts.taglib.html.TOKEN":token,
             "action":"Enter",
             "txtProcId":"/yoyaku/PriceConfirm",
             "riyobiShiseMomethod":"0",
@@ -164,156 +162,8 @@ def SetData(num, resp, code, day, time, captcha=None):
             
         }
     
-    return url, data
+    return url, headers, data
 
-# 予約時間
-def GetReserveTime(num):
-    if num == "1":
-        time = "0903"
-    elif num == "2":
-        time = "1203"
-    elif num == "3":
-        time = "1503"
-    elif num == "4":
-        time = "1803"
-    else:
-        time = "-1"
-    
-    return time
-
-# 予約ステータス
-def GetYoyakuStatus(code):
-    forward = code[20:23]
-    backward = code[24:28]
-    
-    if forward == "001" and backward == "001":
-        status = "_0_1_1_"
-    elif forward == "002" and backward == "002":
-        status = "_0_0_1_"
-    elif forward == "002" and backward == "001":
-        status = "_1_0_1_"
-    else:
-        status = "-1"
-    
-    return status
-
-# 体育館のコード取得
-def GetGymCode(num):
-    if num == "01":
-        # 丸善インテックアリーナ大阪（中央体育館）  サブアリーナ１／２面
-        code = "271004_001_01_02_02_002_002"
-    elif num == "02":
-        # 千島体育館  体育場１／２面
-        code = "271004_001_02_01_02_001_002"
-    elif num == "03":
-        # フィットネス２１東淀川体育館  体育場１／２面
-        code = "271004_001_03_01_02_001_002"
-    elif num == "04":
-        # 北スポーツセンター  第１体育場
-        code = "271004_001_13_01_01_001_001"
-    elif num == "05":
-        # 都島スポーツセンター  第１体育場
-        code = "271004_001_14_01_01_001_001"
-    elif num == "06":
-        # 都島スポーツセンター  第２体育場
-        code = "271004_001_14_02_01_002_001"
-    elif num == "07":
-        # 福島スポーツセンター  体育場
-        code = "271004_001_15_01_01_001_001"
-    elif num == "08":
-        # フィットネス２１此花スポーツセンター  第１体育場
-        code = "271004_001_16_01_01_001_001"
-    elif num == "09":
-        # 中央スポーツセンター  第１体育場
-        code = "271004_001_17_01_01_001_001"
-    elif num == "10":
-        # 西スポーツセンター  第１体育場
-        code = "271004_001_18_01_01_001_001"
-    elif num == "11":
-        # 港スポーツセンター  第１体育場１／２面
-        code = "271004_001_19_01_01_001_001"
-    elif num == "12":
-        # 港スポーツセンター  第２体育場
-        code = "271004_001_19_02_01_002_001"
-    elif num == "13":
-        # 大正スポーツセンター  第１体育場１／２面
-        code = "271004_001_20_01_01_001_001"
-    elif num == "14":
-        # 大正スポーツセンター  第２体育場
-        code = "271004_001_20_02_01_002_001"
-    elif num == "15":
-        # 天王寺スポーツセンター  第１体育場１／２面
-        code = "271004_001_21_01_01_001_001"
-    elif num == "16":
-        # 天王寺スポーツセンター  第２体育場
-        code = "271004_001_21_02_01_002_001"
-    elif num == "17":
-        # 明治スポーツプラザ浪速スポーツセンター  第１体育場１／２面
-        code = "271004_001_22_01_01_001_001"
-    elif num == "18":
-        # 明治スポーツプラザ浪速スポーツセンター  第２体育場
-        code = "271004_001_22_02_01_002_001"
-    elif num == "19":
-        # サンエイワーク西淀川スポーツセンター  体育場
-        code = "271004_001_23_01_01_001_001"
-    elif num == "20":
-        # 淀川スポーツセンター  第１体育場
-        code = "271004_001_24_01_01_001_001"
-    elif num == "21":
-        # 淀川スポーツセンター  第２体育場
-        code = "271004_001_24_02_01_002_001"
-    elif num == "22":
-        # 東淀川スポーツセンター  第１体育場１／２面
-        code = "271004_001_25_01_01_001_001"
-    elif num == "23":
-        # 東成スポーツセンター  第１体育場１／２面
-        code = "271004_001_26_01_01_001_001"
-    elif num == "24":
-        # 東成スポーツセンター  第２体育場
-        code = "271004_001_26_02_01_002_001"
-    elif num == "25":
-        # 生野スポーツセンター  第１体育場
-        code = "271004_001_27_01_01_001_001"
-    elif num == "26":
-        # 旭スポーツセンター  第１体育場
-        code = "271004_001_28_01_01_001_001"
-    elif num == "27":
-        # 城東スポーツセンター  第１体育場１／２面
-        code = "271004_001_29_01_01_001_001"
-    elif num == "28":
-        # 城東スポーツセンター  第２体育場
-        code = "271004_001_29_02_01_002_001"
-    elif num == "29":
-        # 鶴見スポーツセンター  第１体育場
-        code = "271004_001_30_01_01_001_001"
-    elif num == "30":
-        # サンエイワーク阿倍野スポーツセンター  第１体育場１／２面
-        code = "271004_001_31_01_01_001_001"
-    elif num == "31":
-        # 住之江スポーツセンター  第１体育場
-        code = "271004_001_32_01_01_001_001"
-    elif num == "32":
-        # サンエイワーク住吉スポーツセンター  第１体育場１／２面
-        code = "271004_001_33_01_01_001_001"
-    elif num == "33":
-        # 東住吉スポーツセンター  第１体育場１／２面
-        code = "271004_001_34_01_01_001_001"
-    elif num == "34":
-        # ＨＳＴ平野スポーツセンター  第１体育場１／２面
-        code = "271004_001_35_01_01_001_001"
-    elif num == "35":
-        # ＨＳＴ西成スポーツセンター  第１体育場１／２面
-        code = "271004_001_36_01_01_001_001"
-    elif num == "36":
-        # ＨＳＴ西成スポーツセンター  第２体育場
-        code = "271004_001_36_02_01_002_001"
-    elif num == "37":
-        # ＨＳＴ扇町プール  体育場
-        code = "271004_001_37_01_01_001_001"
-    else:
-        code = "-1"
-    
-    return code
 
 # セッションIDの取得
 def GetSessionID(resp):
@@ -350,9 +200,9 @@ def Now():
 def BreakCaptcha(sess, path):
     DownloadImage(sess, "./image/" + path)
     
-    cmd = "convert " + "./image/" + path + " -crop 165x50+45+0 -negate -morphology erode octagon:2 -negate -threshold 78% " + "./image_conv/conv_" + path
+    cmd = "magick convert " + "./image/" + path + " -crop 165x50+45+0 -negate -morphology erode octagon:2 -negate -threshold 78% " + "./image_conv/conv_" + path
     subprocess.call(cmd, shell=True)
-    cmd = 'tesseract --psm 7 ' + './image_conv/conv_' + path + ' out -c tessedit_char_whitelist="23456789abcdefghkmnprstuvwxyz"'
+    cmd = 'tesseract --psm 7 ' + './image_conv/conv_' + path + ' out -c tessedit_char_whitelist="23456789abcdefghkmnprstuvwxyz" -l eng'
     subprocess.call(cmd, shell=True)
     with open("./out.txt") as f0:
         str = ProcessStr(f0.readline())
@@ -379,84 +229,81 @@ def LogOut(sess, sessID):
 
 # メイン処理
 def main(str):
-    sess = requests.session()
-    sessID = "JSESSIONID=93B4E881360AE1D3B6CEBBF15366A947;"
-    referrer = "https://reserve.opas.jp/osakashi/menu/Logout.cgi"
-    resp = 0
+sess = requests.session()
+sessID = "JSESSIONID=93B4E881360AE1D3B6CEBBF15366A947;"
+referrer = "https://reserve.opas.jp/osakashi/menu/Logout.cgi"
+
+# 初期設定
+code = getcode.GetGymCode(str[0:2])
+day = str[2:10]
+time = str[10:11]
+
+# ログイン
+url, headers, data = SetData(0, referrer, sessID)
+resp, referrer = PostData(sess, url, headers, data)
+sessID = GetSessionID(resp)
+
+# ==============================================================
+# 
+# コメントアウトした行は省略可能な為、省略
+# 
+# ==============================================================
+
+
+# メニューを開く
+# url, headers, data = SetData(1, referrer, sessID)
+# resp, referrer = PostData(sess, url, headers, data)
+
+
+# 空き状況照会
+# url, headers, data = SetData(2, referrer, sessID)
+# resp, referrer = PostData(sess, url, headers, data)
+
+
+# 大分類選択
+# url, headers, data = SetData(3, referrer, sessID)
+# resp, referrer = PostData(sess, url, headers, data)
+
+
+# 小分類選択
+url, headers, data = SetData(4, referrer, sessID)
+resp, referrer = PostData(sess, url, headers, data)
+
+
+# 体育館選択
+url, headers, data = SetData(5, referrer, sessID, code=code)
+resp, referrer = PostData(sess, url, headers, data)
+
+
+# 日付表示
+url, headers, data = SetData(6, referrer, sessID, day=day)
+resp, referrer = PostData(sess, url, headers, data)
+
+
+# 日付選択
+url, headers, data = SetData(7, referrer, sessID, code=code, day=day, time=time)
+resp, referrer = PostData(sess, url, headers, data)
+
+
+# 面数、人数確定
+url, headers, data = SetData(8, referrer, sessID, token=GetToken(resp))
+resp, referrer = PostData(sess, url, headers, data)
+
+
+# 予約確定
+i = 0
+while(resp.text.find("公共施設予約システム（エラー情報）") == -1 and resp.text.find("公共施設予約システム（予約完了）") == -1 and i < 10):
+    captcha = BreakCaptcha(sess, "captcha" + '{:0=3}'.format(i) + ".jpg")
     
-    # 初期設定
-    code = GetGymCode(str[0:2])
-    status = GetYoyakuStatus(code)
-    day = str[2:10]
-    time = str[10:11]
-    
-    # ログイン
-    url, data = SetData(0, resp, code, day, time)
-    resp, referrer = PostData(sess, url, referrer, sessID, data)
-    sessID = GetSessionID(resp)
-    
-    # ==============================================================
-    # 
-    # コメントアウトした行は省略可能な為、省略
-    # 
-    # ==============================================================
-    
-    
-    # メニューを開く
-    # url, data = SetData(1, resp, code, day, time)
-    # resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 空き状況照会
-    # url, data = SetData(2, resp, code, day, time)
-    # resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 大分類選択
-    # url, data = SetData(3, resp, code, day, time)
-    # resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 小分類選択
-    url, data = SetData(4, resp, code, day, time)
-    resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 体育館選択
-    url, data = SetData(5, resp, code, day, time)
-    resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 日付表示
-    url, data = SetData(6, resp, code, day, time)
-    resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 日付選択
-    url, data = SetData(7, resp, code, day, time)
-    resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 面数、人数確定
-    url, data = SetData(8, resp, code, day, time)
-    resp, referrer = PostData(sess, url, referrer, sessID, data)
-    
-    
-    # 予約確定
-    i = 150
-    while(resp.text.find("公共施設予約システム（エラー情報）") == -1 and resp.text.find("公共施設予約システム（予約完了）") == -1 and i < 200):
-        captcha = BreakCaptcha(sess, "captcha" + '{:0=3}'.format(i) + ".jpg")
-        
-        url, data = SetData(9, resp, code, day, time, captcha)
-        tmp = referrer
-        resp. referrer = PostData(sess, url, referrer, sessID, data)
-        referrer = tmp
-        i = i + 1
-    
-    print (resp.text)
+    url, headers, data = SetData(9, referrer, sessID, token=GetToken(resp), captcha=captcha)
+    tmp = referrer
+    resp. referrer = PostData(sess, url, headers, data)
+    referrer = tmp
+    i = i + 1
+
+print (resp.text)
 
 if __name__=='__main__':
     with open("./input.txt") as f:
         for str_line in f:
-            print("AA")
             main(str_line)
