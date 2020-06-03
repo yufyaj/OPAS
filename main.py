@@ -229,79 +229,79 @@ def LogOut(sess, sessID):
 
 # メイン処理
 def main(str):
-sess = requests.session()
-sessID = "JSESSIONID=93B4E881360AE1D3B6CEBBF15366A947;"
-referrer = "https://reserve.opas.jp/osakashi/menu/Logout.cgi"
-
-# 初期設定
-code = getcode.GetGymCode(str[0:2])
-day = str[2:10]
-time = str[10:11]
-
-# ログイン
-url, headers, data = SetData(0, referrer, sessID)
-resp, referrer = PostData(sess, url, headers, data)
-sessID = GetSessionID(resp)
-
-# ==============================================================
-# 
-# コメントアウトした行は省略可能な為、省略
-# 
-# ==============================================================
-
-
-# メニューを開く
-# url, headers, data = SetData(1, referrer, sessID)
-# resp, referrer = PostData(sess, url, headers, data)
-
-
-# 空き状況照会
-# url, headers, data = SetData(2, referrer, sessID)
-# resp, referrer = PostData(sess, url, headers, data)
-
-
-# 大分類選択
-# url, headers, data = SetData(3, referrer, sessID)
-# resp, referrer = PostData(sess, url, headers, data)
-
-
-# 小分類選択
-url, headers, data = SetData(4, referrer, sessID)
-resp, referrer = PostData(sess, url, headers, data)
-
-
-# 体育館選択
-url, headers, data = SetData(5, referrer, sessID, code=code)
-resp, referrer = PostData(sess, url, headers, data)
-
-
-# 日付表示
-url, headers, data = SetData(6, referrer, sessID, day=day)
-resp, referrer = PostData(sess, url, headers, data)
-
-
-# 日付選択
-url, headers, data = SetData(7, referrer, sessID, code=code, day=day, time=time)
-resp, referrer = PostData(sess, url, headers, data)
-
-
-# 面数、人数確定
-url, headers, data = SetData(8, referrer, sessID, token=GetToken(resp))
-resp, referrer = PostData(sess, url, headers, data)
-
-
-# 予約確定
-i = 0
-while(resp.text.find("公共施設予約システム（エラー情報）") == -1 and resp.text.find("公共施設予約システム（予約完了）") == -1 and i < 10):
-    captcha = BreakCaptcha(sess, "captcha" + '{:0=3}'.format(i) + ".jpg")
+    sess = requests.session()
+    sessID = "JSESSIONID=93B4E881360AE1D3B6CEBBF15366A947;"
+    referrer = "https://reserve.opas.jp/osakashi/menu/Logout.cgi"
     
-    url, headers, data = SetData(9, referrer, sessID, token=GetToken(resp), captcha=captcha)
-    tmp = referrer
-    resp. referrer = PostData(sess, url, headers, data)
-    referrer = tmp
-    i = i + 1
-
-print (resp.text)
+    # 初期設定
+    code = getcode.GetGymCode(str[0:2])
+    day = str[2:10]
+    time = str[10:11]
+    
+    # ログイン
+    url, headers, data = SetData(0, referrer, sessID)
+    resp, referrer = PostData(sess, url, headers, data)
+    sessID = GetSessionID(resp)
+    
+    # ==============================================================
+    # 
+    # コメントアウトした行は省略可能な為、省略
+    # 
+    # ==============================================================
+    
+    
+    # メニューを開く
+    # url, headers, data = SetData(1, referrer, sessID)
+    # resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 空き状況照会
+    # url, headers, data = SetData(2, referrer, sessID)
+    # resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 大分類選択
+    # url, headers, data = SetData(3, referrer, sessID)
+    # resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 小分類選択
+    url, headers, data = SetData(4, referrer, sessID)
+    resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 体育館選択
+    url, headers, data = SetData(5, referrer, sessID, code=code)
+    resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 日付表示
+    url, headers, data = SetData(6, referrer, sessID, day=day)
+    resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 日付選択
+    url, headers, data = SetData(7, referrer, sessID, code=code, day=day, time=time)
+    resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 面数、人数確定
+    url, headers, data = SetData(8, referrer, sessID, token=GetToken(resp))
+    resp, referrer = PostData(sess, url, headers, data)
+    
+    
+    # 予約確定
+    i = 0
+    while(resp.text.find("公共施設予約システム（エラー情報）") == -1 and resp.text.find("公共施設予約システム（予約完了）") == -1 and i < 10):
+        captcha = BreakCaptcha(sess, "captcha" + '{:0=3}'.format(i) + ".jpg")
+        
+        url, headers, data = SetData(9, referrer, sessID, token=GetToken(resp), captcha=captcha)
+        tmp = referrer
+        resp. referrer = PostData(sess, url, headers, data)
+        referrer = tmp
+        i = i + 1
+    
+    print (resp.text)
 
 if __name__=='__main__':
     with open("./input.txt") as f:
