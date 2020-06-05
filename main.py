@@ -4,6 +4,8 @@ import shutil
 import subprocess
 import pdb
 import getcode
+import session
+import checkreserve
 
 import os
 os.environ["http_proxy"] = "http://17017@tachibana.co.jp:17@01Tc7@proxy:8000"
@@ -23,18 +25,11 @@ PASSWORD = "WYDHF8VG"
 # =================================================================================
 #                              関数の定義
 # =================================================================================
-# データをポストする為の関数(戻り値は　レスポンス, 次回リファラー）
-def PostData(sess, url, headers, data):
-    print (Now() + " == URL: " + url)
-    resp = sess.post(url, headers=headers, data=data)
-    
-    # 結果のエンコードを適正に
-    resp.encoding = resp.apparent_encoding
-    
-    return resp, url;
 
 # URL, データセット
-def SetData(num, referrer, sessID, code=None, day=None, time=None, captcha=None, token=None):
+def GetData(num, referrer, sessID, code=None, day=None, time=None, captcha=None, token=None):
+    today = datetime.datetime.now().strftime('%Y%m')
+    
     if num == 0:
         url = "https://reserve.opas.jp/osakashi/menu/Login.cgi"
     elif num == 1:
@@ -55,6 +50,10 @@ def SetData(num, referrer, sessID, code=None, day=None, time=None, captcha=None,
         url = "https://reserve.opas.jp/osakashi/yoyaku/ShinseiEntry.cgi"
     elif num == 9:
         url = "https://reserve.opas.jp/osakashi/yoyaku/PriceConfirm.cgi"
+    elif num == 98:
+        url = "https://reserve.opas.jp/osakashi/menu/Menu.cgi"
+    elif num == 99:
+        url = "https://reserve.opas.jp/osakashi/yoyaku/RiyoshaYoyakuList.cgi"
     
     headers = {
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
@@ -161,6 +160,26 @@ def SetData(num, referrer, sessID, code=None, day=None, time=None, captcha=None,
             "txtKaptcha":captcha
             
         }
+    elif num == 98:
+        data = {
+            "action":"Enter",
+            "txtProcId":"/menu/Menu",
+            "txtFunctionCode":"YoyakuQuery"
+        }
+    elif num == 99:
+        data = {
+            "action":"Setup",
+            "txtProcId":"/yoyaku/RiyoshaYoyakuList",
+            "selectedYoyakuUniqKey":"",
+            "hiddenCorrectRiyoShinseiYM":"",
+            "hiddenCollectDisplayNum":"100",
+            "pageIndex":"0",
+            "printedFlg":"",
+            "riyoShinseiYM":day[0:6],
+            "txtRiyoShinseiYM":today[0:4] + "%94N"+ today[4:6] +"%8C%8E",
+            "reqDisplayInfoNum":"100",
+            "txtReqDisplayInfoNum":""
+        }
     
     return url, headers, data
 
@@ -191,10 +210,7 @@ def DownloadImage(sess, savePath):
     with open(savePath, 'wb') as f:
         f.raw.decode_content = True
         shutil.copyfileobj(resp.raw, f)
-
-# 現在の時刻を取得
-def Now():
-    return datetime.datetime.now().strftime('%Y/%m/%d %H:%M:%S')
+        
 
 # キャプチャ突破
 def BreakCaptcha(sess, path):
@@ -220,88 +236,74 @@ def ProcessStr(str):
             result = result + char
     return result
 
-# ログアウト
-def LogOut(sess, sessID):
-    url = "https://reserve.opas.jp/osakashi/menu/Logout.cgi"
-    PostData(sess, url, "", sessID)
-
 # =================================================================================
 
 # メイン処理
-def main(str):
-    sess = requests.session()
-    sessID = "JSESSIONID=93B4E881360AE1D3B6CEBBF15366A947;"
-    referrer = "https://reserve.opas.jp/osakashi/menu/Logout.cgi"
+def main(str_code):
+    main_sess = session.session()
+    sub_sess  = session.session()
     
     # 初期設定
-    code = getcode.GetGymCode(str[0:2])
-    day = str[2:10]
-    time = str[10:11]
+    code = getcode.GetGymCode(str_code[0:2])
+    day  = str_code[2:10]
+    time = str_code[10:11]
     
     # ログイン
-    url, headers, data = SetData(0, referrer, sessID)
-    resp, referrer = PostData(sess, url, headers, data)
-    sessID = GetSessionID(resp)
+    main_sess.setPostParam(GetData(0, main_sess.referrer, main_sess.sessID))
+    main_sess.PostData()
+    main_sess.setSessionID(GetSessionID(main_sess.resp))
     
-    # ==============================================================
-    # 
-    # コメントアウトした行は省略可能な為、省略
-    # 
-    # ==============================================================
+    # サブログイン
+    sub_sess.setPostParam(GetData(0, sub_sess.referrer, sub_sess.sessID))
+    sub_sess.PostData()
+    sub_sess.setSessionID(GetSessionID(sub_sess.resp))
     
-    
-    # メニューを開く
-    # url, headers, data = SetData(1, referrer, sessID)
-    # resp, referrer = PostData(sess, url, headers, data)
-    
-    
-    # 空き状況照会
-    # url, headers, data = SetData(2, referrer, sessID)
-    # resp, referrer = PostData(sess, url, headers, data)
-    
-    
-    # 大分類選択
-    # url, headers, data = SetData(3, referrer, sessID)
-    # resp, referrer = PostData(sess, url, headers, data)
-    
+    # メニュー遷移
+    sub_sess.setPostParam(GetData(98, sub_sess.referrer, sub_sess.sessID))
+    sub_sess.PostData()
     
     # 小分類選択
-    url, headers, data = SetData(4, referrer, sessID)
-    resp, referrer = PostData(sess, url, headers, data)
+    main_sess.setPostParam(GetData(4, main_sess.referrer, main_sess.sessID))
+    main_sess.PostData()
     
     
     # 体育館選択
-    url, headers, data = SetData(5, referrer, sessID, code=code)
-    resp, referrer = PostData(sess, url, headers, data)
+    main_sess.setPostParam(GetData(5, main_sess.referrer, main_sess.sessID, code=code))
+    main_sess.PostData()
     
     
     # 日付表示
-    url, headers, data = SetData(6, referrer, sessID, day=day)
-    resp, referrer = PostData(sess, url, headers, data)
+    main_sess.setPostParam(GetData(6, main_sess.referrer, main_sess.sessID, day=day))
+    main_sess.PostData()
     
     
     # 日付選択
-    url, headers, data = SetData(7, referrer, sessID, code=code, day=day, time=time)
-    resp, referrer = PostData(sess, url, headers, data)
+    main_sess.setPostParam(GetData(7, main_sess.referrer, main_sess.sessID, code=code, day=day, time=time))
+    main_sess.PostData()
     
     
     # 面数、人数確定
-    url, headers, data = SetData(8, referrer, sessID, token=GetToken(resp))
-    resp, referrer = PostData(sess, url, headers, data)
+    main_sess.setPostParam(GetData(8, main_sess.referrer, main_sess.sessID, token=GetToken(main_sess.resp)))
+    main_sess.PostData()
     
     
     # 予約確定
     i = 0
     while(resp.text.find("公共施設予約システム（エラー情報）") == -1 and resp.text.find("公共施設予約システム（予約完了）") == -1 and i < 10):
-        captcha = BreakCaptcha(sess, "captcha" + '{:0=3}'.format(i) + ".jpg")
+        captcha = BreakCaptcha(main_sess.sess, "captcha" + '{:0=3}'.format(i) + ".jpg")
         
-        url, headers, data = SetData(9, referrer, sessID, token=GetToken(resp), captcha=captcha)
-        tmp = referrer
-        resp. referrer = PostData(sess, url, headers, data)
-        referrer = tmp
+        main_sess.setPostParam(GetData(9, main_sess.referrer, main_sess.sessID, token=GetToken(main_sess.resp), captcha=captcha))
+        
+        tmp = main_sess.referrer
+        main_sess.PostData()
+        
+        sub_sess.setPostParam(GetData(99, sub_sess.referrer, sub_sess.sessID, day=day))
+        sub_sess.PostData()
+        
+        main_sess.referrer = tmp
         i = i + 1
     
-    print (resp.text)
+    print (main_sess.resp.text)
 
 if __name__=='__main__':
     with open("./input.txt") as f:
