@@ -1,6 +1,3 @@
-﻿import os
-os.environ["http_proxy"] = "http://17017@tachibana.co.jp:17@01Tc7@proxy:8000"
-
 import requests
 import datetime
 import shutil
