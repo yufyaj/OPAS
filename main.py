@@ -303,10 +303,20 @@ def main(str_code):
         
         i = i + 1
     
-    print (main_sess.resp.text)
+    with open("./result.txt") as res:
+        if (chk):
+            res.write(str_code + ":  ○")
+        else:
+            res.write(str_code + ":  ×")
 
 if __name__=='__main__':
-    
+    log.OutTitle("==================================================")
+    log.OutTitle("                 処 理 開 始                      ")
+    log.OutTitle("==================================================")
     with open("./input.txt") as f:
         for str_line in f:
             main(str_line)
+    log.OutTitle("==================================================")
+    log.OutTitle("                 処 理 終 了                      ")
+    log.OutTitle("==================================================")
+
